@@ -40,6 +40,7 @@ public final class TerminalBuffer {
     }
 
     public String getSelectedText(int selX1, int selY1, int selX2, int selY2) {
+        System.out.println("coordinates"+selX1+":"+selY1+":"+selX2+":"+selY2);
         final StringBuilder builder = new StringBuilder();
         final int columns = mColumns;
 
@@ -79,9 +80,59 @@ public final class TerminalBuffer {
                 builder.append(line, x1Index, lastPrintingCharIndex - x1Index + 1);
             if (!rowLineWrap && row < selY2 && row < mScreenRows - 1) builder.append('\n');
         }
+        System.out.println("builder"+builder.toString());
+        myfn();
         return builder.toString();
     }
+    public void myfn()
+    {
+        int selX1=21;
+        int selY1=5;
+        int selX2=21;
+        int selY2=5;
+        System.out.println("coordinates"+selX1+":"+selY1+":"+selX2+":"+selY2);
+        final StringBuilder builder = new StringBuilder();
+        final int columns = mColumns;
 
+        if (selY1 < -getActiveTranscriptRows()) selY1 = -getActiveTranscriptRows();
+        if (selY2 >= mScreenRows) selY2 = mScreenRows - 1;
+
+        for (int row = selY1; row <= selY2; row++) {
+            int x1 = (row == selY1) ? selX1 : 0;
+            int x2;
+            if (row == selY2) {
+                x2 = selX2 + 1;
+                if (x2 > columns) x2 = columns;
+            } else {
+                x2 = columns;
+            }
+            TerminalRow lineObject = mLines[externalToInternalRow(row)];
+            int x1Index = lineObject.findStartOfColumn(x1);
+            int x2Index = (x2 < mColumns) ? lineObject.findStartOfColumn(x2) : lineObject.getSpaceUsed();
+            if (x2Index == x1Index) {
+                // Selected the start of a wide character.
+                x2Index = lineObject.findStartOfColumn(x2 + 1);
+            }
+            char[] line = lineObject.mText;
+            int lastPrintingCharIndex = -1;
+            int i;
+            boolean rowLineWrap = getLineWrap(row);
+            if (rowLineWrap && x2 == columns) {
+                // If the line was wrapped, we shouldn't lose trailing space:
+                lastPrintingCharIndex = x2Index - 1;
+            } else {
+                for (i = x1Index; i < x2Index; ++i) {
+                    char c = line[i];
+                    if (c != ' ') lastPrintingCharIndex = i;
+                }
+            }
+            if (lastPrintingCharIndex != -1)
+                builder.append(line, x1Index, lastPrintingCharIndex - x1Index + 1);
+            if (!rowLineWrap && row < selY2 && row < mScreenRows - 1) builder.append('\n');
+        }
+        System.out.println("builderFN: "+builder.toString());
+        //return builder.toString();
+    }
     public int getActiveTranscriptRows() {
         return mActiveTranscriptRows;
     }

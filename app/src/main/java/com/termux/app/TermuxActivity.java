@@ -21,14 +21,17 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.SoundPool;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
 import android.os.Vibrator;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v4.widget.DrawerLayout;
@@ -56,19 +59,26 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.termux.R;
 import com.termux.terminal.EmulatorDebug;
+import com.termux.terminal.KeyHandler;
+import com.termux.terminal.TerminalBuffer;
 import com.termux.terminal.TerminalColors;
+import com.termux.terminal.TerminalEmulator;
+import com.termux.terminal.TerminalRow;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSession.SessionChangedCallback;
 import com.termux.terminal.TextStyle;
 import com.termux.view.TerminalView;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
@@ -77,6 +87,10 @@ import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static com.termux.terminal.TerminalRow.finished;
+import static com.termux.terminal.TerminalRow.outputArray;
+import static com.termux.terminal.TerminalRow.printline;
 
 /**
  * A terminal emulator activity.
@@ -201,23 +215,26 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
             return true;
         }
     }
-
+    Spinner sp;
     @Override
     public void onCreate(Bundle bundle) {
         super.onCreate(bundle);
 
         mSettings = new TermuxPreferences(this);
-
+        fl=0;
         setContentView(R.layout.drawer_layout);
         mTerminalView = findViewById(R.id.terminal_view);
         mTerminalView.setOnKeyListener(new TermuxViewClient(this));
 
         mTerminalView.setTextSize(mSettings.getFontSize());
         mTerminalView.requestFocus();
-
+        sp = (Spinner)findViewById(R.id.spinner);
+        String[] items = new String[]{"c", "c++", "python"};
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,android.R.layout.simple_spinner_item, items);
+        sp.setAdapter(adapter);
+        sp.setSelection(0);
         final ViewPager viewPager = findViewById(R.id.viewpager);
         if (mSettings.isShowExtraKeys()) viewPager.setVisibility(View.VISIBLE);
-
         viewPager.setAdapter(new PagerAdapter() {
             @Override
             public int getCount() {
@@ -238,16 +255,42 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                     layout = mExtraKeysView = (ExtraKeysView) inflater.inflate(R.layout.extra_keys_main, collection, false);
                 } else {
                     layout = inflater.inflate(R.layout.extra_keys_right, collection, false);
+
                     final EditText editText = layout.findViewById(R.id.text_input);
+
+                    /*  editText.setOnClickListener(new OnClickListener() {
+                        @Override
+                        public void onClick(View view) {
+                            try{
+                                TerminalSession session = getCurrentTermSession();
+                                session.write("echo hello");
+                                //Toast.makeText(getApplicationContext(),"yesssss",Toast.LENGTH_SHORT).show();
+                            }catch(Exception e){System.out.println(e);}
+                        }
+                    });*/
                     editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
                         @Override
                         public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                           // printline();
                             TerminalSession session = getCurrentTermSession();
                             if (session != null) {
                                 if (session.isRunning()) {
                                     String textToSend = editText.getText().toString();
                                     if (textToSend.length() == 0) textToSend = "\n";
+                                    System.out.println("message sent : "+textToSend);
                                     session.write(textToSend);
+                                   /* textToSend="pkg install coreutils";
+                                    session.write(textToSend);
+                                    session.write("\n");
+                                    textToSend="pkg install clang";
+                                    session.write(textToSend);
+                                    session.write("\n");
+                                    textToSend=("./a.out new.c");
+                                    session.write(textToSend);
+                                    session.write("\n");
+                                    */
+                                    //session.write("clang new.c");
+
                                 } else {
                                     removeFinishedSession(session);
                                 }
@@ -257,6 +300,7 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                         }
                     });
                 }
+
                 collection.addView(layout);
                 return layout;
             }
@@ -438,7 +482,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
 
                 TerminalSession sessionAtRow = getItem(position);
                 boolean sessionRunning = sessionAtRow.isRunning();
-
                 TextView firstLineView = row.findViewById(R.id.row_line);
 
                 String name = sessionAtRow.mSessionName;
@@ -452,9 +495,9 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                 SpannableString styledText = new SpannableString(text);
                 styledText.setSpan(boldSpan, 0, numberPart.length() + sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 styledText.setSpan(italicSpan, numberPart.length() + sessionNamePart.length(), text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
+                System.out.println("termuxactivity"+styledText);
                 firstLineView.setText(styledText);
-
+                newfn();
                 if (sessionRunning) {
                     firstLineView.setPaintFlags(firstLineView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
                 } else {
@@ -553,6 +596,7 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
             // The service has connected, but data may have changed since we were last in the foreground.
             switchToSession(getStoredCurrentSessionOrLast());
             mListViewAdapter.notifyDataSetChanged();
+            //try{newfn();}catch(Exception e){System.out.println("1"+e);}
         }
 
         registerReceiver(mBroadcastReceiever, new IntentFilter(RELOAD_STYLE_ACTION));
@@ -848,6 +892,252 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                 index = service.getSessions().size() - 1;
             }
             switchToSession(service.getSessions().get(index));
+        }
+    }
+    String xtext="";
+    int fl;
+    public void newfn()
+    {
+        if(fl==0)
+            fl=1;
+        else
+            return;
+
+        System.out.println("newfn called");
+        String command="echo hello";
+
+        getCurrentTermSession().write(command+"\n");
+        command="pkg install clang";
+        getCurrentTermSession().write(command+"\n");
+        command="pkg install coreutils";
+        getCurrentTermSession().write(command+"\n");
+        command="pkg install python";
+        getCurrentTermSession().write(command+"\n");
+
+
+        //printline(0);
+       /* command="clear";
+        getCurrentTermSession().write(command+"\n");
+        for(int i=0;i<outputArray.size();i++){
+        outputArray.remove(i);}
+        */
+        //this.removeFinishedSession(getCurrentTermSession());
+    }
+    /*public static void printline()
+    {
+
+
+        for(int i=0;i<outputArray.size();i++) {
+            String x = new String(outputArray.get(i));
+            x=x.trim();
+            if(x.length()!=0)
+                System.out.println("printline fn"+x);
+        }
+
+
+    }*/
+
+    /* public boolean onCodePoint(final int codePoint, boolean ctrlDown, TerminalSession session) {
+        System.out.println("onCodePoint"+(char)codePoint+" "+ctrlDown+" "+session.mSessionName);
+
+
+            int resultingKeyCode = -1;
+            int resultingCodePoint = -1;
+            boolean altDown = false;
+            int lowerCase = Character.toLowerCase(codePoint);
+            switch (lowerCase) {
+                // Arrow keys.
+                case 'w':
+                    resultingKeyCode = KeyEvent.KEYCODE_DPAD_UP;
+                    break;
+                case 'a':
+                    resultingKeyCode = KeyEvent.KEYCODE_DPAD_LEFT;
+                    break;
+                case 's':
+                    resultingKeyCode = KeyEvent.KEYCODE_DPAD_DOWN;
+                    break;
+                case 'd':
+                    resultingKeyCode = KeyEvent.KEYCODE_DPAD_RIGHT;
+                    break;
+
+                // Page up and down.
+                case 'p':
+                    resultingKeyCode = KeyEvent.KEYCODE_PAGE_UP;
+                    break;
+                case 'n':
+                    resultingKeyCode = KeyEvent.KEYCODE_PAGE_DOWN;
+                    break;
+
+                // Some special keys:
+                case 't':
+                    resultingKeyCode = KeyEvent.KEYCODE_TAB;
+                    break;
+                case 'i':
+                    resultingKeyCode = KeyEvent.KEYCODE_INSERT;
+                    break;
+                case 'h':
+                    resultingCodePoint = '~';
+                    break;
+
+                // Special characters to input.
+                case 'u':
+                    resultingCodePoint = '_';
+                    break;
+                case 'l':
+                    resultingCodePoint = '|';
+                    break;
+
+                // Function keys.
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    resultingKeyCode = (codePoint - '1') + KeyEvent.KEYCODE_F1;
+                    break;
+                case '0':
+                    resultingKeyCode = KeyEvent.KEYCODE_F10;
+                    break;
+
+                // Other special keys.
+                case 'e':
+                    resultingCodePoint = Escape 27;
+                    break;
+                case '.':
+                    resultingCodePoint = ^. 28;
+                    break;
+
+                case 'b': // alt+b, jumping backward in readline.
+                case 'f': // alf+f, jumping forward in readline.
+                case 'x': // alt+x, common in emacs.
+                    resultingCodePoint = lowerCase;
+                    altDown = true;
+                    break;
+
+                // Volume control.
+                case 'v':
+                    resultingCodePoint = -1;
+                    AudioManager audio = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+                    audio.adjustSuggestedStreamVolume(AudioManager.ADJUST_SAME, AudioManager.USE_DEFAULT_STREAM_TYPE, AudioManager.FLAG_SHOW_UI);
+                    break;
+
+                // Writing mode:
+                case 'q':
+                    toggleShowExtraKeys();
+                    break;
+            }
+            xtext+=(char)resultingKeyCode;
+            if (resultingKeyCode != -1) {
+                TerminalEmulator term = session.getEmulator();
+                session.write(KeyHandler.getCode(resultingKeyCode, 0, term.isCursorKeysApplicationMode(), term.isKeypadApplicationMode()));
+            } else if (resultingCodePoint != -1) {
+                session.writeCodePoint(altDown, resultingCodePoint);
+            }
+            return true;
+        }
+           /* List<TermuxPreferences.KeyboardShortcut> shortcuts = mActivity.mSettings.shortcuts;
+            if (!shortcuts.isEmpty()) {
+                int codePointLowerCase = Character.toLowerCase(codePoint);
+                for (int i = shortcuts.size() - 1; i >= 0; i--) {
+                    TermuxPreferences.KeyboardShortcut shortcut = shortcuts.get(i);
+                    if (codePointLowerCase == shortcut.codePoint) {
+                        switch (shortcut.shortcutAction) {
+                            case TermuxPreferences.SHORTCUT_ACTION_CREATE_SESSION:
+                                mActivity.addNewSession(false, null);
+                                return true;
+                            case TermuxPreferences.SHORTCUT_ACTION_PREVIOUS_SESSION:
+                                mActivity.switchToSession(false);
+                                return true;
+                            case TermuxPreferences.SHORTCUT_ACTION_NEXT_SESSION:
+                                mActivity.switchToSession(true);
+                                return true;
+                            case TermuxPreferences.SHORTCUT_ACTION_RENAME_SESSION:
+                                mActivity.renameSession(mActivity.getCurrentTermSession());
+                                return true;
+                        }
+                    }
+                }
+            }
+        }
+
+
+    }
+    */
+           public void btnfn(View v)
+           {
+
+               isStoragePermissionGranted();
+               String lang=sp.getSelectedItem().toString();
+               String compileCommand=new String();
+               String fileName=new String();
+               if(lang.equals("c"))
+               {
+                   System.out.println("Selected language is C");
+                   fileName="newfile.c";
+                   compileCommand="clang newfile.c";
+               }
+               else if(lang.equals("c++"))
+               {
+                   System.out.println("Selected language is C++");
+                   fileName="newfile.cpp";
+                   compileCommand="clang++ newfile.cpp";
+               }
+               else if(lang.equals("python"))
+               {
+                   System.out.println("Selected language is Python");
+                   fileName="newfile.py";
+                   compileCommand="python newfile.py";
+
+               }
+               try{EditText et = (EditText)findViewById(R.id.editText);
+               String text = et.getText().toString();
+               if(text.trim().equals("")!=true)
+               {
+                   //File f1 = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
+                   File f = new File("/data/data/com.termux/files/home/"+fileName);
+                    if(!f.exists()){
+                       try{f.createNewFile();}catch(Exception e){System.out.println(e);}
+                    }
+                   FileWriter fw = new FileWriter(f.getAbsoluteFile(),false);
+                   BufferedWriter bw = new BufferedWriter(fw);
+                   bw.write(text);
+                   bw.close();
+                   getCurrentTermSession().write(compileCommand+"\n");
+                   if(!lang.equals("python")) {
+                       //getCurrentTermSession().write("clear" + "\n");
+                       getCurrentTermSession().write("./a.out" + "\n");
+                       //outputArray.clear();
+                   }
+//                   printline(1);
+               }}
+               catch (Exception e)
+               {
+                   System.out.println("2"+e);
+               }
+
+           }
+    public  boolean isStoragePermissionGranted() {
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED) {
+                System.out.println("Permission is granted");
+                return true;
+            } else {
+
+                System.out.println("Permission is revoked");
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+
+
+                return false;
+            }
+        }
+        else { //permission is automatically granted on sdk<23 upon installation
+            System.out.println("PERMISSION GRANTED!");
+            return true;
         }
     }
 

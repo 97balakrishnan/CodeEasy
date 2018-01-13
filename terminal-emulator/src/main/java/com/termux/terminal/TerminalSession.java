@@ -125,7 +125,7 @@ public final class TerminalSession extends TerminalOutput {
                     // Non-zero process exit.
                     exitDescription += " (code " + exitCode + ")";
                 } else if (exitCode < 0) {
-                    // Negated signal.
+                    // Negatutfed signal.
                     exitDescription += " (signal " + (-exitCode) + ")";
                 }
                 exitDescription += " - press Enter]";
@@ -227,6 +227,7 @@ public final class TerminalSession extends TerminalOutput {
     /** Write data to the shell process. */
     @Override
     public void write(byte[] data, int offset, int count) {
+        System.out.println("write called");
         if (mShellPid > 0) mTerminalToProcessIOQueue.write(data, offset, count);
     }
 

@@ -8,7 +8,10 @@ import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
+import android.widget.Toast;
 
+import com.termux.R;
 import com.termux.terminal.KeyHandler;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
@@ -24,11 +27,12 @@ public final class TermuxViewClient implements TerminalViewClient {
     boolean mVirtualControlKeyDown, mVirtualFnKeyDown;
 
     public TermuxViewClient(TermuxActivity activity) {
-        this.mActivity = activity;
+        System.out.println("constructor");this.mActivity = activity;
     }
 
     @Override
     public float onScale(float scale) {
+        System.out.println("onScale");
         if (scale < 0.9f || scale > 1.1f) {
             boolean increase = scale > 1.f;
             mActivity.changeFontSize(increase);
@@ -39,6 +43,7 @@ public final class TermuxViewClient implements TerminalViewClient {
 
     @Override
     public void onSingleTapUp(MotionEvent e) {
+        System.out.println("onSingletapup");
         InputMethodManager mgr = (InputMethodManager) mActivity.getSystemService(Context.INPUT_METHOD_SERVICE);
         mgr.showSoftInput(mActivity.mTerminalView, InputMethodManager.SHOW_IMPLICIT);
     }
@@ -56,6 +61,8 @@ public final class TermuxViewClient implements TerminalViewClient {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent e, TerminalSession currentSession) {
+        System.out.println("onKeyDown");
+        // Toast.makeText(this.mActivity,"hello",Toast.LENGTH_LONG).show();
         if (handleVirtualKeys(keyCode, e, true)) return true;
 
         if (keyCode == KeyEvent.KEYCODE_ENTER && !currentSession.isRunning()) {
@@ -107,26 +114,30 @@ public final class TermuxViewClient implements TerminalViewClient {
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent e) {
-        return handleVirtualKeys(keyCode, e, false);
+        System.out.println("onKeyUp");return handleVirtualKeys(keyCode, e, false);
     }
 
     @Override
     public boolean readControlKey() {
+        System.out.println("readControlKey");
         return (mActivity.mExtraKeysView != null && mActivity.mExtraKeysView.readControlButton()) || mVirtualControlKeyDown;
     }
 
     @Override
     public boolean readAltKey() {
+        System.out.println("readAltKey");
         return (mActivity.mExtraKeysView != null && mActivity.mExtraKeysView.readAltButton());
     }
 
     @Override
     public boolean onCodePoint(final int codePoint, boolean ctrlDown, TerminalSession session) {
+        System.out.println("onCodePoint"+(char)codePoint+" "+ctrlDown+" "+session.mSessionName);
         if (mVirtualFnKeyDown) {
             int resultingKeyCode = -1;
             int resultingCodePoint = -1;
             boolean altDown = false;
             int lowerCase = Character.toLowerCase(codePoint);
+            System.out.println("lowercase :"+Character.toLowerCase(codePoint));
             switch (lowerCase) {
                 // Arrow keys.
                 case 'w':
@@ -212,7 +223,7 @@ public final class TermuxViewClient implements TerminalViewClient {
                     mActivity.toggleShowExtraKeys();
                     break;
             }
-
+            System.out.println("keycode: "+resultingKeyCode+" codePoint:"+resultingCodePoint);
             if (resultingKeyCode != -1) {
                 TerminalEmulator term = session.getEmulator();
                 session.write(KeyHandler.getCode(resultingKeyCode, 0, term.isCursorKeysApplicationMode(), term.isKeypadApplicationMode()));
@@ -256,11 +267,12 @@ public final class TermuxViewClient implements TerminalViewClient {
 
     @Override
     public boolean onLongPress(MotionEvent event) {
-        return false;
+        System.out.println("onLongPress");return false;
     }
 
     /** Handle dedicated volume buttons as virtual keys if applicable. */
     private boolean handleVirtualKeys(int keyCode, KeyEvent event, boolean down) {
+        System.out.println("handleVirtualKeys");
         InputDevice inputDevice = event.getDevice();
         if (inputDevice != null && inputDevice.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC) {
             // Do not steal dedicated buttons from a full external keyboard.

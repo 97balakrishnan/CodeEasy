@@ -1,5 +1,8 @@
 package com.termux.terminal;
 
+import android.text.TextUtils;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -10,7 +13,8 @@ import java.util.Arrays;
 public final class TerminalRow {
 
     private static final float SPARE_CAPACITY_FACTOR = 1.5f;
-
+    public String x;
+    public static ArrayList<char[]> outputArray = new ArrayList<>();
     /** The number of columns in this terminal row. */
     private final int mColumns;
     /** The text filling this terminal row. */
@@ -21,21 +25,25 @@ public final class TerminalRow {
     boolean mLineWrap;
     /** The style bits of each cell in the row. See {@link TextStyle}. */
     final long[] mStyle;
-
+    int fl;
     /** Construct a blank row (containing only whitespace, ' ') with a specified style. */
     public TerminalRow(int columns, long style) {
         mColumns = columns;
         mText = new char[(int) (SPARE_CAPACITY_FACTOR * columns)];
         mStyle = new long[columns];
+
+        fl=0;
         clear(style);
     }
 
     /** NOTE: The sourceX2 is exclusive. */
     public void copyInterval(TerminalRow line, int sourceX1, int sourceX2, int destinationX) {
+
         final int x1 = line.findStartOfColumn(sourceX1);
         final int x2 = line.findStartOfColumn(sourceX2);
         boolean startingFromSecondHalfOfWideChar = (sourceX1 > 0 && line.wideDisplayCharacterStartingAt(sourceX1 - 1));
         final char[] sourceChars = (this == line) ? Arrays.copyOf(line.mText, line.mText.length) : line.mText;
+        System.out.println("copyOf"+mText);
         int latestNonCombiningWidth = 0;
         for (int i = x1; i < x2; i++) {
             char sourceChar = sourceChars[i];
@@ -113,6 +121,7 @@ public final class TerminalRow {
     }
 
     public void clear(long style) {
+
         Arrays.fill(mText, ' ');
         Arrays.fill(mStyle, style);
         mSpaceUsed = (short) mColumns;
@@ -217,8 +226,40 @@ public final class TerminalRow {
                 mSpaceUsed -= nextLen;
             }
         }
-    }
+      /*  String y = new String(mText);
 
+        x=y.trim();
+        if(x.length()==(y.length()-1)){}*/
+        String x = new String(mText);
+        char[] temp = new char[x.length()-1];
+        x.getChars(0,x.length()-1,temp,0);
+        x=x.trim();
+
+        if(x.length()!=0)
+        {
+           //System.out.println("x:"+x+" "+outputArray.size());
+
+
+                        if(outputArray.contains(mText)==false)
+                        if(outputArray.isEmpty() == false&&outputArray.contains(temp))
+                        {
+                            outputArray.set(outputArray.size()-1,mText);
+                        }
+                        else
+                        {
+
+                            outputArray.add(mText);
+                        }
+
+                        //printline();
+
+
+
+            }
+        if(x.equals("$"))
+        printline(1);
+    }
+    public static boolean finished=false;
     boolean isBlank() {
         for (int charIndex = 0, charLen = getSpaceUsed(); charIndex < charLen; charIndex++)
             if (mText[charIndex] != ' ') return false;
@@ -228,5 +269,27 @@ public final class TerminalRow {
     public final long getStyle(int column) {
         return mStyle[column];
     }
+    public static void printline(int n)
+    {
+         {
+            if (n == 1) {
+                for (int i = 0; i < outputArray.size(); i++) {
+                    String x = new String(outputArray.get(i));
+
+                    x = x.trim();
+                    if (x.length() != 0)
+                        System.out.println("output :" + x);
+                }
+                outputArray.clear();
+                outputArray = new ArrayList<>();
+
+            } else {
+                outputArray.clear();
+                outputArray = new ArrayList<>();
+            }
+        }
+
+    }
 
 }
+

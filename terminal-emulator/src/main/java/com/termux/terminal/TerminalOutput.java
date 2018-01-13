@@ -7,7 +7,12 @@ public abstract class TerminalOutput {
 
     /** Write a string using the UTF-8 encoding to the terminal client. */
     public final void write(String data) {
+        /*for(int i=0;i<data.length();i++)
+            System.out.print(data.charAt(i));
+        System.out.println("greener ");*/
+
         byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
+        ///System.out.println("bluer ");
         write(bytes, 0, bytes.length);
     }
 

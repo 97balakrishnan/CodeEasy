@@ -249,7 +249,7 @@ public final class TerminalView extends View {
             public boolean finishComposingText() {
                 if (LOG_KEY_EVENTS) Log.i(EmulatorDebug.LOG_TAG, "IME: finishComposingText()");
                 super.finishComposingText();
-
+                System.out.println("getEditable"+getEditable().toString());
                 sendTextToTerminal(getEditable());
                 getEditable().clear();
                 return true;
@@ -257,6 +257,7 @@ public final class TerminalView extends View {
 
             @Override
             public boolean commitText(CharSequence text, int newCursorPosition) {
+                System.out.println("text:"+text);
                 if (LOG_KEY_EVENTS) {
                     Log.i(EmulatorDebug.LOG_TAG, "IME: commitText(\"" + text + "\", " + newCursorPosition + ")");
                 }
@@ -347,6 +348,7 @@ public final class TerminalView extends View {
 
     @Override
     protected int computeVerticalScrollOffset() {
+
         return mEmulator == null ? 1 : mEmulator.getScreen().getActiveRows() + mTopRow - mEmulator.mRows;
     }
 

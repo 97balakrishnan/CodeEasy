@@ -25,6 +25,7 @@ public final class DialogUtils {
         final EditText input = new EditText(activity);
         input.setSingleLine();
         if (initialText != null) {
+            System.out.println("DialogUtils"+initialText);
             input.setText(initialText);
             Selection.setSelection(input.getText(), initialText.length());
         }
