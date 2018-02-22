@@ -17,7 +17,12 @@
         android:layout_alignParentTop="true"
         android:layout_marginTop="350dp"
         android:layout_height="match_parent">
-
+        <TextView
+            android:id="@+id/output_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:translationZ="10px"
+            android:background="#2f5"/>
         <com.termux.view.TerminalView
             android:id="@+id/terminal_view"
             android:layout_width="match_parent"

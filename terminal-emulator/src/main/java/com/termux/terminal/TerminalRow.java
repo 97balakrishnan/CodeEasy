@@ -12,6 +12,7 @@ import java.util.Arrays;
  */
 public final class TerminalRow {
 
+    public static ArrayList<String> outputStorage = new ArrayList<>();
     private static final float SPARE_CAPACITY_FACTOR = 1.5f;
     public String x;
     public static ArrayList<char[]> outputArray = new ArrayList<>();
@@ -277,8 +278,10 @@ public final class TerminalRow {
                     String x = new String(outputArray.get(i));
 
                     x = x.trim();
-                    if (x.length() != 0)
+                    if (x.length() != 0) {
+                        outputStorage.add(x);
                         System.out.println("output :" + x);
+                    }
                 }
                 outputArray.clear();
                 outputArray = new ArrayList<>();

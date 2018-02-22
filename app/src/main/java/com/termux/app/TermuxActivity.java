@@ -90,6 +90,7 @@ import java.util.regex.Pattern;
 
 import static com.termux.terminal.TerminalRow.finished;
 import static com.termux.terminal.TerminalRow.outputArray;
+import static com.termux.terminal.TerminalRow.outputStorage;
 import static com.termux.terminal.TerminalRow.printline;
 
 /**
@@ -903,9 +904,9 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
         else
             return;
 
-        System.out.println("newfn called");
-        String command="echo hello";
-
+       // System.out.println("newfn called");
+        // String command="echo hello";
+        /*
         getCurrentTermSession().write(command+"\n");
         command="pkg install clang";
         getCurrentTermSession().write(command+"\n");
@@ -914,7 +915,7 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
         command="pkg install python";
         getCurrentTermSession().write(command+"\n");
 
-
+        */
         //printline(0);
        /* command="clear";
         getCurrentTermSession().write(command+"\n");
@@ -1066,20 +1067,8 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
 
 
     }
-    */
-           public void btnfn(View v)
-           {
-
-               isStoragePermissionGranted();
-               String lang=sp.getSelectedItem().toString();
-               String compileCommand=new String();
-               String fileName=new String();
-               if(lang.equals("c"))
-               {
-                   System.out.println("Selected language is C");
-                   fileName="newfile.c";
-                   compileCommand="clang newfile.c";
-               }
+    *//*
+    *
                else if(lang.equals("c++"))
                {
                    System.out.println("Selected language is C++");
@@ -1093,30 +1082,85 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                    compileCommand="python newfile.py";
 
                }
-               try{EditText et = (EditText)findViewById(R.id.editText);
-               String text = et.getText().toString();
-               if(text.trim().equals("")!=true)
-               {
-                   //File f1 = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
-                   File f = new File("/data/data/com.termux/files/home/"+fileName);
-                    if(!f.exists()){
-                       try{f.createNewFile();}catch(Exception e){System.out.println(e);}
-                    }
-                   FileWriter fw = new FileWriter(f.getAbsoluteFile(),false);
-                   BufferedWriter bw = new BufferedWriter(fw);
-                   bw.write(text);
-                   bw.close();
-                   getCurrentTermSession().write(compileCommand+"\n");
-                   if(!lang.equals("python")) {
-                       //getCurrentTermSession().write("clear" + "\n");
-                       getCurrentTermSession().write("./a.out" + "\n");
-                       //outputArray.clear();
+    * */
+           public void btnfn(View v)
+           {
+               TextView output_view = (TextView) findViewById(R.id.output_view);
+                for(int x=0;x<outputStorage.size();x++)
+                    System.out.println("term:"+outputStorage.get(x));
+
+               isStoragePermissionGranted();
+               String lang=sp.getSelectedItem().toString();
+               String compileCommand=new String();
+               String fileName=new String();
+               if(lang.equals("c")) {
+                   System.out.println("Selected language is C");
+                   fileName = "newfile.c";
+                   compileCommand = "clang newfile.c";
+
+                   try {
+                       EditText et = (EditText) findViewById(R.id.editText);
+
+                       String text = et.getText().toString();
+
+                       if (text.trim().equals("") != true) {
+                           //File f1 = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
+                           File f = new File("/data/data/com.termux/files/home/" + fileName);
+                           if (!f.exists()) {
+                               try {
+                                   f.createNewFile();
+                               } catch (Exception e) {
+                                   System.out.println(e);
+                               }
+                           }
+                           FileWriter fw = new FileWriter(f.getAbsoluteFile(), false);
+                           BufferedWriter bw = new BufferedWriter(fw);
+                           bw.write(text);
+                           bw.close();
+                           getCurrentTermSession().write(compileCommand + "\n");
+                           getCurrentTermSession().write("\n");
+
+                           int ERROR_FLAG = 0;
+                           int i;
+                           i=outputStorage.lastIndexOf("$ clang newfile.c")+1;
+
+
+                           output_view.setText("");
+
+                           for (; i < outputStorage.size(); i++) {
+                               String opStr = outputStorage.get(i);
+                               if (!opStr.equals("$")) {
+
+                                   output_view.setBackgroundColor(Color.RED);
+                                   String temp = output_view.getText().toString() + "\n" + opStr;
+                                   output_view.setText(temp);
+                                   ERROR_FLAG = 1;
+                                   System.out.println("Error encountered");
+
+                               }
+                           }
+                           if (ERROR_FLAG == 0) {
+                               getCurrentTermSession().write("./a.out" + "\n");
+                               i = outputStorage.lastIndexOf("$ ./a.out")+1;
+
+                               output_view.setText("");
+                               for (; i < outputStorage.size(); i++) {
+                                   String opStr = outputStorage.get(i);
+                                   if (!opStr.equals("$")) {
+                                       output_view.setBackgroundColor(Color.GREEN);
+                                       String temp = output_view.getText().toString() + "\n" + opStr;
+                                       output_view.setText(temp);
+
+                                   }
+                               }
+
+                           }
+
+                           getCurrentTermSession().write("\n");
+                       }
+                   } catch (Exception e) {
+                       System.out.println(e);
                    }
-//                   printline(1);
-               }}
-               catch (Exception e)
-               {
-                   System.out.println("2"+e);
                }
 
            }
